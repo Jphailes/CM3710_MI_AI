@@ -1,12 +1,56 @@
+"""
+Using python 3.9 on anaconda env. (Handles SKLearn slightly differently but import still works).
+
+Using mushroom data from :
+https://archive.ics.uci.edu/ml/datasets/Mushroom
+
+This data set includes descriptions of hypothetical samples corresponding to 23 species of gilled mushrooms in the
+Agaricus and Lepiota Family (pp. 500-525). Each species is identified as definitely edible, definitely poisonous, or
+of unknown edibility and not recommended. This latter class was combined with the poisonous one. The Guide clearly
+states that there is no simple rule for determining the edibility of a mushroom; no rule like ``leaflets three,
+let it be'' for Poisonous Oak and Ivy.
+
+Attribute Information:
+
+1. cap-shape: bell=b,conical=c,convex=x,flat=f, knobbed=k,sunken=s
+2. cap-surface: fibrous=f,grooves=g,scaly=y,smooth=s
+3. cap-color: brown=n,buff=b,cinnamon=c,gray=g,green=r, pink=p,purple=u,red=e,white=w,yellow=y
+4. bruises?: bruises=t,no=f
+5. odor: almond=a,anise=l,creosote=c,fishy=y,foul=f, musty=m,none=n,pungent=p,spicy=s
+6. gill-attachment: attached=a,descending=d,free=f,notched=n
+7. gill-spacing: close=c,crowded=w,distant=d
+8. gill-size: broad=b,narrow=n
+9. gill-color: black=k,brown=n,buff=b,chocolate=h,gray=g, green=r,orange=o,pink=p,purple=u,red=e, white=w,yellow=y
+10. stalk-shape: enlarging=e,tapering=t
+11. stalk-root: bulbous=b,club=c,cup=u,equal=e, rhizomorphs=z,rooted=r,missing=?   <<<<< ## note missing values here ##
+12. stalk-surface-above-ring: fibrous=f,scaly=y,silky=k,smooth=s
+13. stalk-surface-below-ring: fibrous=f,scaly=y,silky=k,smooth=s
+14. stalk-color-above-ring: brown=n,buff=b,cinnamon=c,gray=g,orange=o, pink=p,red=e,white=w,yellow=y
+15. stalk-color-below-ring: brown=n,buff=b,cinnamon=c,gray=g,orange=o, pink=p,red=e,white=w,yellow=y
+16. veil-type: partial=p,universal=u
+17. veil-color: brown=n,orange=o,white=w,yellow=y
+18. ring-number: none=n,one=o,two=t
+19. ring-type: cobwebby=c,evanescent=e,flaring=f,large=l, none=n,pendant=p,sheathing=s,zone=z
+20. spore-print-color: black=k,brown=n,buff=b,chocolate=h,green=r, orange=o,purple=u,white=w,yellow=y
+21. population: abundant=a,clustered=c,numerous=n, scattered=s,several=v,solitary=y
+22. habitat: grasses=g,leaves=l,meadows=m,paths=p, urban=u,waste=w,woods=d
+
+
+"""
+
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 import plotly.express as px
-# import scikit_learn
+from sklearn import tree
+from sklearn.metrics import accuracy_score
+import matplotlib_inline
 
-# Mushroom data file is placed within working directory.
-mushrooms = 'agaricus-lepiota.data'
+
+
+# load the mushroom data. Change location for mushrooms to where you saved the file.
+mushrooms = r'C:\Users\jphai\PycharmProjects\Mushroom_Assessment\agaricus-lepiota.data'
 
 shrooms = pd.read_csv(mushrooms, header=None)
 
@@ -14,6 +58,8 @@ shrooms = pd.read_csv(mushrooms, header=None)
 # the first colum in the dataset is the class, which will e(edible) or (p)poisonous
 predicted_class = shrooms[0]
 shrooms = shrooms.drop([0], axis=1)
+
+shrooms = shrooms.drop([11], axis=1) # dropped stalk_root here due to the missing values.
 
 col_labels = ['cap-shape',
               'cap-surface',
@@ -25,7 +71,7 @@ col_labels = ['cap-shape',
               'gill-size',
               'gill-color',
               'stalk-shape',
-              'stalk-root',
+              # 'stalk-root',     # removed due to missing values
               'stalk-surface-above-ring',
               'stalk-surface-below-ring',
               'stalk-color-above-ring',
@@ -116,7 +162,7 @@ print_score(scores2)
 print("%0.2f accuracy with a standard deviation of %0.2f" % (scores2.mean(), scores2.std()))
 
 """So the model appears to improve with less neighbours. I would be inclined to leave it at 2 neighbours with the accuracy
-increasing to 95% and the standard deviation reducing to 0.06. I did test going down to 1 but there was no change from 2.
+increasing to 96% and the standard deviation reducing to 0.06. I did test going down to 1 but there was no change from 2.
 Also tried changing the distance metric from Euclidean (P=1) and Manhattan (P=2) but this did not make any difference."""
 
 
@@ -138,14 +184,12 @@ it poisonous or edible
 # but ahhhh.... SKLEARN currently does not handle categorical data !! However my data is not ordinal so i can still use
 # the previously one hot encoded data.
 
-from sklearn import tree
-from sklearn.metrics import accuracy_score
 
-# i have initially gone with a depth of 10 here as dateset has 22 attributes.
+# i have initially gone with a depth of 10 here as dateset has 21 attributes.
 tree_model = tree.DecisionTreeClassifier(max_depth=10)
 
 #This time i will use a simple manual split of the data
-# create a test train split leaving the split size at 30% and then check the sizes of the respective sets.
+# create a test train split leaving the size at 30% for 70/30 split and then check the sizes of the respective sets.
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
 
 print(f'x_train dimensions = {x_train.shape} and x_test dimensions = {x_test.shape}')
@@ -154,12 +198,11 @@ print(f'y_train dimensions = {y_train.shape} and y_test dimensions = {y_test.sha
 # fit the model
 tree_model.fit(x_train, y_train)
 
-# create predictions suing the test split
+# create predictions using the test split
 tree_predict = tree_model.predict(x_test)
 
-acc = accuracy_score(y_test, tree_predict)
-
 # Here we can see the accuracy. Which appears to be pretty good.
+acc = accuracy_score(y_test, tree_predict)
 print(acc)
 
 #So lets look at the model parameters
@@ -176,13 +219,34 @@ def mytree(max_depth, criteron):
         acc = accuracy_score(y_test, tree_predict)
         print(f'max_depth of {i}, returns accuracy of: {acc}')
 
-# we can see below how the depth of teh tree impacts the accuracy as the depth increases.
+# we can see below how the depth of the tree impacts the accuracy as the depth increases.
 mytree(10,criteron='entropy')
 
-tree_model = tree.DecisionTreeClassifier(max_depth=7,criterion='entropy')
+# So a max depth of 6 enables accuracy of 1. So using that helps improve performance and reduces complexity slightly
+
+tree_model = tree.DecisionTreeClassifier(max_depth=6,criterion='entropy')
 tree_model.fit(x_train, y_train)
 tree_model.get_params()
 tree_model.get_depth()
+
+# we can see that the number of decision points in the tree is 12.
 tree_model.get_n_leaves()
 
 tree_model.predict_log_proba(x_test)
+
+
+# obtain the one hot encoded label names to help aid tree visualisation.
+tree_labels = one_hot_shrooms.columns.values
+
+
+
+tree.plot_tree(tree_model,feature_names=tree_labels)
+
+import matplotlib_inline
+import graphviz
+dot_data = tree.export_graphviz(tree_model, out_file=r'D:\Tree_Visual')
+graph = graphviz.Source(dot_data)
+graph.render("iris")
+
+
+labelled_shrooms['feature_names']
